@@ -106,6 +106,10 @@ export function StopRedis() {
   return window['go']['main']['App']['StopRedis']();
 }
 
-export function StopTunnel() {
-  return window['go']['main']['App']['StopTunnel']();
+export function StopTunnel(arg1) {
+  return window['go']['main']['App']['StopTunnel'](arg1);
+}
+
+export function StopTunnelAll() {
+  return window['go']['main']['App']['StopTunnelAll']();
 }

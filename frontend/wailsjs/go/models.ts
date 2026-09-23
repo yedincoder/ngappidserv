@@ -6,6 +6,8 @@ export namespace main {
 	    web_port: number;
 	    db_port: number;
 	    pgsql_port: number;
+	    redis_port: number;
+	    mailpit_port: number;
 	    db_manager: string;
 	
 	    static createFrom(source: any = {}) {
@@ -19,6 +21,8 @@ export namespace main {
 	        this.web_port = source["web_port"];
 	        this.db_port = source["db_port"];
 	        this.pgsql_port = source["pgsql_port"];
+	        this.redis_port = source["redis_port"];
+	        this.mailpit_port = source["mailpit_port"];
 	        this.db_manager = source["db_manager"];
 	    }
 	}
@@ -48,6 +52,22 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.domain = source["domain"];
 	        this.port = source["port"];
+	    }
+	}
+	export class TunnelResult {
+	    success: boolean;
+	    url: string;
+	    msg: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TunnelResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.url = source["url"];
+	        this.msg = source["msg"];
 	    }
 	}
 

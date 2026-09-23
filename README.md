@@ -29,7 +29,7 @@
 Aplikasi ini sudah di-*bundle* secara mandiri (*Portable-like*) dengan teknologi terbaru:
 
 * **Nginx** v1.31.3 *(Mainline)*
-* **PHP** v8.3.32, v8.4.12, v8.5.8 *(NTS Win32 x64)*
+* **PHP** php-8.4.25 *(NTS Win32 x64)*
 * **MySQL / MariaDB** v12.3.2 *(Win x64)*
 * **phpMyAdmin** v5.2.3 *(All Languages)*
 * **Redis Cache** v5.0.14.1 *(x64)*
@@ -37,6 +37,10 @@ Aplikasi ini sudah di-*bundle* secara mandiri (*Portable-like*) dengan teknologi
 * **Tunnel** *(Localtunnel via Node Portable)*
 * **mkcert** *(Auto SSL HTTPS)*
 * **Golang & Wails** *(Core Native UI Engine)*
+
+### 💡 NOTE (Add-ons)
+- **PostgreSQL** bisa didownload secara manual. Unduh file `pgsql`, lalu ekstrak isinya ke dalam folder: `C:\Dev.NgAppID\NgAppIDServ\bin\pgsql`
+- **Panel Manager Adminer** bisa didownload secara manual. Unduh file `adminer`, lalu ekstrak isinya ke dalam folder: `C:\Dev.NgAppID\NgAppIDServ\www\adminer` 
 
 ---
 
@@ -88,6 +92,9 @@ Karena aplikasi kini menggunakan Golang (Wails), pastikan kamu sudah menginstal 
 * **Server Nginx/MySQL Tidak Mau Start (Lampu Merah Terus):** Hal ini terjadi karena Port `80` atau `3307` sedang dipakai oleh aplikasi lain (seperti Skype, IIS, atau XAMPP lama). Solusinya: **Ganti angka port di kolom input aplikasi NgAppIDServ** sebelum mengeklik START.
 * **Domain `.test` Tidak Ditemukan (Not Found):** Pastikan kamu membuka aplikasi NgAppIDServ dengan akses **Run as Administrator**. Jika tidak, sistem gagal mendaftarkan domain lokalmu ke `C:\Windows\System32\drivers\etc\hosts`.
 
+
+* **⚠️ PENTING:** Pastikan selalu menjalankan aplikasi dengan hak akses tertinggi (**Run as Administrator**) agar fitur sinkronisasi *Virtual Host* dan *Hosts File* di Windows berjalan mulus tanpa hambatan.
+
 ---
 
 ## 👨‍💻 Author, Support, & Dedication
@@ -96,7 +103,7 @@ Dikembangkan dengan ☕ oleh **(YedinCoder)** dan bersifat 100% *Open Source*.
 
 * **Email:** yedincoder@gmail.com
 * **WhatsApp:** 081802161315
-* **Website:** [ngappid.com](https://ngappid.com)
+* **Website:** [yedin.my.id](https://yedin.my.id) || [ngappid.com](https://ngappid.com)  || [dev.ngappid.com](https://dev.ngappid.com) 
 
 > ❤️ **Spesial:** 
 > *Sebuah karya  untuk kemudahan developer di seluruh Nusantara. Didedikasikan dengan segenap cinta untuk **Zawjatii**, serta tiga pelita hati: **Shafa**, **Ra'uf**, dan si bungsu **Sa'ad**.*

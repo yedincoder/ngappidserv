@@ -22,7 +22,7 @@ type App struct {
 	processes map[string]*exec.Cmd
 }
 
-func (a *App) GetAppVersion() string { return "2.0.2" }
+func (a *App) GetAppVersion() string { return "2.0.1" }
 func NewApp() *App {
 	return &App{
 		processes: make(map[string]*exec.Cmd),
@@ -88,7 +88,7 @@ func (a *App) OpenPMA() {
 	cfg := a.readSettings()
 	manager := cfg.DBManager
 	if manager == "" {
-		manager = "ngappidmydb"
+		manager = "phpmyadmin"
 	}
 	runtime.BrowserOpenURL(a.ctx, fmt.Sprintf("http://localhost/%s", manager)) 
 }
@@ -99,7 +99,9 @@ type Config struct {
 	MySQL     string `json:"mysql"`
 	WebPort   int    `json:"web_port"`
 	DBPort    int    `json:"db_port"`
-	PgsqlPort int    `json:"pgsql_port"` // <-- Tambahan buat PostgreSQL
+	PgsqlPort int    `json:"pgsql_port"` 
+	RedisPort int    `json:"redis_port"` 
+	MailpitPort int    `json:"mailpit_port"` 
 	DBManager string `json:"db_manager"`
 }
 
@@ -114,11 +116,13 @@ config := Config{
 		WebPort:   80,
 		DBPort:    3307,
 		PgsqlPort: 5432,
-		DBManager: "ngappidmydb",
+		RedisPort: 6379,
+		MailpitPort: 8025,
+		DBManager: "phpmyadmin",
 	}
 
 	if _, err := os.Stat(settingPath); os.IsNotExist(err) {
-		defaultContent := "[DEFAULT_ENGINE]\r\nphp=php\r\nmysql=mariadb\r\nweb_port=80\r\ndb_port=3307\r\ndb_manager=ngappidmydb\r\n"
+		defaultContent := "[NGAPPIDSERV BY YEDINCODER]\r\n[DEFAULT_ENGINE]\r\nphp=php\r\nmysql=mariadb\r\nweb_port=80\r\ndb_port=3307\r\npgsql_port=5432\r\nredis_port=6379\r\nmailpit_port=8025\r\ndb_manager=phpmyadmin\r\n"
 		os.WriteFile(settingPath, []byte(defaultContent), 0644)
 		return config
 	}
@@ -145,6 +149,16 @@ config := Config{
 	if m := regexp.MustCompile(`(?m)^pgsql_port\s*=\s*(\d+)$`).FindStringSubmatch(content); len(m) > 1 {
 		if p, err := strconv.Atoi(m[1]); err == nil {
 			config.PgsqlPort = p
+		}
+	}
+	if m := regexp.MustCompile(`(?m)^redis_port\s*=\s*(\d+)$`).FindStringSubmatch(content); len(m) > 1 {
+		if p, err := strconv.Atoi(m[1]); err == nil {
+			config.RedisPort = p
+		}
+	}
+	if m := regexp.MustCompile(`(?m)^mailpit_port\s*=\s*(\d+)$`).FindStringSubmatch(content); len(m) > 1 {
+		if p, err := strconv.Atoi(m[1]); err == nil {
+			config.MailpitPort = p
 		}
 	}
 	if m := regexp.MustCompile(`(?m)^db_manager\s*=\s*(.+)$`).FindStringSubmatch(content); len(m) > 1 {
@@ -182,12 +196,23 @@ func (a *App) SaveSettings(data map[string]string) map[string]any {
 			current.PgsqlPort = p
 		}
 	}
+	if rp, ok := data["redis_port"]; ok && rp != "" {
+		if p, err := strconv.Atoi(rp); err == nil {
+			current.RedisPort = p
+		}
+	}
+	if mlp, ok := data["mailpit_port"]; ok && mlp != "" {
+		if p, err := strconv.Atoi(mlp); err == nil {
+			current.MailpitPort = p
+		}
+	}
 	if dbMgr, ok := data["db_manager"]; ok && dbMgr != "" {
 		current.DBManager = dbMgr
 	}
 
-	newIni := fmt.Sprintf("[DEFAULT_ENGINE]\r\nphp=%s\r\nmysql=%s\r\nweb_port=%d\r\ndb_port=%d\r\npgsql_port=%d\r\ndb_manager=%s\r\n", 
-        current.PHP, current.MySQL, current.WebPort, current.DBPort, current.PgsqlPort, current.DBManager)
+	newIni := fmt.Sprintf("[NGAPPIDSERV BY YEDINCODER]\r\n[DEFAULT_ENGINE]\r\nphp=%s\r\nmysql=%s\r\nweb_port=%d\r\ndb_port=%d\r\npgsql_port=%d\r\nredis_port=%d\r\nmailpit_port=%d\r\ndb_manager=%s\r\n", 
+		current.PHP, current.MySQL, current.WebPort, current.DBPort, current.PgsqlPort, current.RedisPort, current.MailpitPort, current.DBManager)		
+		
 	
 	if err := os.WriteFile(settingPath, []byte(newIni), 0644); err != nil {
 		return map[string]any{"success": false, "message": "Gagal menyimpan"}
@@ -294,7 +319,7 @@ func (a *App) generateVirtualHosts(webPort int) {
 	entries, _ := os.ReadDir(wwwPath)
 	var domainList []string
 	for _, entry := range entries {
-	if entry.IsDir() && entry.Name() != "phpmyadmin" && entry.Name() != "ngappidmydb" && entry.Name() != "adminer" {
+	if entry.IsDir() && entry.Name() != "ngappidmydb" && entry.Name() != "phpmyadmin" && entry.Name() != "adminer" {
 			domain := entry.Name() + ".test"
 			domainList = append(domainList, domain)
 			basePath := filepath.Join(wwwPath, entry.Name())
@@ -391,7 +416,7 @@ func (a *App) Start(port int) {
 		domainArgs := []string{"-cert-file", sslCert, "-key-file", sslKey, "localhost", "127.0.0.1"}
 		entries, _ := os.ReadDir(filepath.Join(cwd, "www"))
 		for _, e := range entries {
-			if e.IsDir() && e.Name() != "phpmyadmin" && e.Name() != "ngappidmydb" && e.Name() != "adminer" {
+			if e.IsDir() && e.Name() != "ngappidmydb" && e.Name() != "phpmyadmin" && e.Name() != "adminer" {
 				domainArgs = append(domainArgs, e.Name()+".test")
 			}
 		}
@@ -672,9 +697,27 @@ type TunnelData struct {
 	Port   any    `json:"port"`
 }
 
-func (a *App) StartTunnel(data TunnelData) {
-	if a.processes["tunnel"] != nil {
-		return
+// Struct balikan buat Javascript
+type TunnelResult struct {
+	Success bool   `json:"success"`
+	URL     string `json:"url"`
+	Msg     string `json:"msg"`
+}
+
+func (a *App) StartTunnel(data TunnelData) TunnelResult {
+	domainTarget := data.Domain
+	if domainTarget == "" {
+		domainTarget = "percobaan.test"
+	}
+	baseName := strings.TrimSuffix(domainTarget, ".test")
+	baseName = strings.TrimSuffix(baseName, ".local")
+	baseName = strings.ToLower(baseName)
+
+	processKey := "tunnel_" + baseName
+
+	// Cegah start dobel buat project yang sama
+	if a.processes[processKey] != nil {
+		return TunnelResult{Success: false, Msg: "Tunnel project ini sudah berjalan!"}
 	}
 	
 	portInt := 80
@@ -692,13 +735,6 @@ func (a *App) StartTunnel(data TunnelData) {
 		portInt = 80
 	}
 
-	domainTarget := data.Domain
-	if domainTarget == "" {
-		domainTarget = "percobaan.test"
-	}
-	baseName := strings.TrimSuffix(domainTarget, ".test")
-	baseName = strings.TrimSuffix(baseName, ".local")
-	baseName = strings.ToLower(baseName)
 	randNum := 10 + time.Now().UnixNano()%90 
 	customSubdomain := fmt.Sprintf("%s-%d-yedin-ngappid", baseName, randNum)
 
@@ -707,19 +743,24 @@ func (a *App) StartTunnel(data TunnelData) {
 	cwd := a.getAppDir()
 	nodeExe := filepath.Join(cwd, "bin", "localtunnel", "lt-node.exe")
 	ltScript := filepath.Join(cwd, "bin", "localtunnel", "node_modules", "localtunnel", "bin", "lt.js")
-
-	cmd := exec.Command(nodeExe, ltScript, "--port", fmt.Sprintf("%d", portInt), "--subdomain", customSubdomain, "--local-host", domainTarget)
+	
+	//cmd := exec.Command(nodeExe, ltScript, "--port", fmt.Sprintf("%d", portInt), "--local-host", baseName+".test")
+	cmd := exec.Command(nodeExe, ltScript, "--port", fmt.Sprintf("%d", portInt), "--subdomain", customSubdomain, "--local-host", baseName+".test")
+	//cmd := exec.Command(nodeExe, ltScript, "--port", fmt.Sprintf("%d", portInt), "--subdomain", customSubdomain, "--local-host", domainTarget)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
 	if err := cmd.Start(); err == nil {
-		a.processes["tunnel"] = cmd
+		a.processes[processKey] = cmd
 	} else {
 		a.emitLog(fmt.Sprintf("❌ Gagal: %v. Pastikan lt-node.exe ada di bin/localtunnel.", err))
-		return
+		return TunnelResult{Success: false, Msg: "Gagal start lt-node"}
 	}
+
+	// Pipa untuk nangkep URL dari Scanner dan ngirim ke return Wails
+	urlChan := make(chan string)
 
 	go func() {
 		scanner := bufio.NewScanner(stdout)
@@ -729,9 +770,10 @@ func (a *App) StartTunnel(data TunnelData) {
 				parts := strings.Split(line, "is: ")
 				if len(parts) > 1 {
 					publicUrl := strings.TrimSpace(parts[1])
-					a.emitLog(fmt.Sprintf("🌍 Localtunnel Aktif: %s", publicUrl))
-					runtime.EventsEmit(a.ctx, "tunnel-url", publicUrl)
-					a.emitStatus("lampuTunnel", "on")
+					a.emitLog(fmt.Sprintf("🌍 Localtunnel [%s] Aktif: %s", baseName, publicUrl))
+					
+					// Lempar URL ke channel biar fungsi utamanya bisa return ke UI Modal
+					urlChan <- publicUrl 
 				}
 			}
 		}
@@ -740,27 +782,59 @@ func (a *App) StartTunnel(data TunnelData) {
 	go func() {
 		scannerErr := bufio.NewScanner(stderr)
 		for scannerErr.Scan() {
-			a.emitLog("🔴 [Localtunnel Error]: " + scannerErr.Text())
+			a.emitLog(fmt.Sprintf("🔴 [Localtunnel Error %s]: %s", baseName, scannerErr.Text()))
 		}
 	}()
+
+	// Jaga-jaga kalau server loc.lt nge-lag. Max tunggu 30 detik.
+	select {
+	case publicUrl := <-urlChan:
+		return TunnelResult{Success: true, URL: publicUrl, Msg: "Sukses connect"}
+	case <-time.After(30 * time.Second): // 👈 UBAH DI SINI BRO (Jadi 30)
+		a.StopTunnel(baseName)
+		a.emitLog(fmt.Sprintf("❌ Tunnel %s Timeout (Server down/lemot)", baseName))
+		return TunnelResult{Success: false, Msg: "Timeout (30 Detik)"}
+	}
 }
 
-func (a *App) StopTunnel() {
-	a.killProcess("tunnel", "lt-node.exe")
-	a.emitLog("🛑 Tunnel Dimatikan")
-	a.emitStatus("lampuTunnel", "off")
-	runtime.EventsEmit(a.ctx, "tunnel-url", nil)
+// Fungsi stop diubah buat nerima nama project
+func (a *App) StopTunnel(projectName string) {
+	processKey := "tunnel_" + projectName
+	if cmd, exists := a.processes[processKey]; exists && cmd != nil {
+		cmd.Process.Kill()
+		delete(a.processes, processKey)
+		a.emitLog(fmt.Sprintf("🛑 Tunnel [%s] berhasil dimatikan", projectName)) 
+	}
 }
 
+func (a *App) StopTunnelAll() {
+	a.killProcess("localtunnel", "lt-node.exe")
+	a.emitLog("🛑 Lt-Node Tunnel dimatikan")
+}
+
+
+// ==== STOP ALL ====
 func (a *App) StopAll() {
 	a.Stop()
 	a.StopDB()
 	a.StopPgSQL()
 	a.StopRedis()
 	a.StopMail()
-	a.StopTunnel()
-	a.emitLog("🛑 SEMUA LAYANAN BERHASIL DIMATIKAN!")
+	a.StopTunnelAll()
+	
+	// Looping hapus semua tunnel yang lagi nyala
+	for key, cmd := range a.processes {
+		if strings.HasPrefix(key, "tunnel_") {
+			if cmd != nil && cmd.Process != nil {
+				cmd.Process.Kill()
+			}
+			delete(a.processes, key)
+		}
+	}
+	
+	a.emitLog("🛑 SEMUA LAYANAN & TUNNEL BERHASIL DIMATIKAN!")
 }
+
 
 // ==== PROJECT MANAGER ====
 func (a *App) getWwwPath() string {
@@ -772,7 +846,7 @@ func (a *App) GetProjects() []string {
 	entries, _ := os.ReadDir(a.getWwwPath())
 	
 	for _, e := range entries {
-	if e.IsDir() && e.Name() != "phpmyadmin" && e.Name() != "ngappidmydb" && e.Name() != "adminer" {
+	if e.IsDir() && e.Name() != "ngappidmydb" && e.Name() != "phpmyadmin" && e.Name() != "adminer" {
 			projs = append(projs, e.Name())
 		}
 	}
@@ -842,7 +916,7 @@ func (a *App) RebuildSSL() {
 	domainArgs := []string{"-cert-file", filepath.Join(sslDir, "server.crt"), "-key-file", filepath.Join(sslDir, "server.key"), "localhost", "127.0.0.1"}
 	entries, _ := os.ReadDir(filepath.Join(cwd, "www"))
 	for _, e := range entries {
-		if e.IsDir() && e.Name() != "phpmyadmin" && e.Name() != "ngappidmydb" && e.Name() != "adminer" {
+		if e.IsDir() && e.Name() != "ngappidmydb" && e.Name() != "phpmyadmin" && e.Name() != "adminer" {
 			domainArgs = append(domainArgs, e.Name()+".test")
 		}
 	}

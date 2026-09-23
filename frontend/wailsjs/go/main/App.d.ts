@@ -40,7 +40,7 @@ export function StartPgSQL(arg1:number):Promise<void>;
 
 export function StartRedis():Promise<void>;
 
-export function StartTunnel(arg1:main.TunnelData):Promise<void>;
+export function StartTunnel(arg1:main.TunnelData):Promise<main.TunnelResult>;
 
 export function Stop():Promise<void>;
 
@@ -54,4 +54,6 @@ export function StopPgSQL():Promise<void>;
 
 export function StopRedis():Promise<void>;
 
-export function StopTunnel():Promise<void>;
+export function StopTunnel(arg1:string):Promise<void>;
+
+export function StopTunnelAll():Promise<void>;
